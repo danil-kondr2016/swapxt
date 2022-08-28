@@ -24,27 +24,31 @@ void write_images(char * dir, int c, int n, int w, int h);
 
 int main(int argc, char ** argv) {
   char * input_dir;
+  char * output_dir;
   int width, height;
   int n_buffers;
   int output_dir_fd;
   int i;
 
   if (argc < 4) {
-    printf("Usage: %s input_dir/ width height\n", argv[0]);
+    printf("Usage: %s input_dir/ width height <output_dir/>\n", argv[0]);
     exit(-1);
   }
   
   input_dir = argv[1];
   width = atoi(argv[2]);
   height = atoi(argv[3]);
+  if (argc < 5)
+    output_dir = "o";
+  else
+    output_dir = argv[4];
 
   n_buffers = width / N_ITERATIONS;
 
-  output_dir_fd = mkdirat(AT_FDCWD, "o", S_IRWXU | S_IRWXG | S_IRWXO);
-  if (output_dir_fd == -1) {
-    int _e = errno;
-    if (_e != EEXIST) {
-      perror("o");
+  if (faccessat(AT_FDCWD, output_dir, F_OK, 0) != 0) {
+    output_dir_fd = mkdirat(AT_FDCWD, output_dir, S_IRWXU | S_IRWXG | S_IRWXO);
+    if (output_dir_fd == -1) {
+      perror(output_dir);
       exit(-1);
     }
   }
@@ -57,7 +61,7 @@ int main(int argc, char ** argv) {
   for (i = 0; i < width; i += n_buffers) {
     fprintf(stderr, "Pass #%d\n", i / n_buffers + 1);
     read_images(input_dir, width, i, n_buffers);
-    write_images("o", i, n_buffers, width, height);
+    write_images(output_dir, i, n_buffers, width, height);
   }
  
   close(output_dir_fd);
@@ -135,10 +139,10 @@ void read_images(char * dir, int n_files, int c, int n) {
 
 void write_images(char * dir, int c, int n, int w, int h)
 {
-  png_structp png;
-  png_infop   info;
   FILE * f;
   char fname[256];
+  png_structp png;
+  png_infop   info;
   png_bytepp  rows;
   int i, x, y, p;
 
